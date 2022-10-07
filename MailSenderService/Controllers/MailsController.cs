@@ -40,15 +40,13 @@ namespace MailSenderService.Controllers
         {
 
             MailsResult result = new MailsResult();
-            
-            _context.Mails.Add(mails);
-            await _context.SaveChangesAsync();
 
-            result.MailsId = new { id = mails.Id }.id;
+            mails.MailsResult = result; // <--
             result.CreatedDate = DateTime.Now;
+
+            _context.Mails.Add(mails);
             _context.MailsResults.Add(result);
             await _context.SaveChangesAsync();
-
             try
             {
                 var emailMessage = new MimeMessage();
