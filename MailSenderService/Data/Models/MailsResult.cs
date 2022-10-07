@@ -10,11 +10,13 @@ namespace MailSenderService.Data.Models
     public class MailsResult
     {
         [Key]
-        [ForeignKey("Mails")]
         public int Id { get; set; }
         public DateTime CreatedDate { get; set; }
         public string Result { get; set; }
         public string FailedMessage { get; set; }
+
+        [ForeignKey("MailsId")]
+        public int MailsId { get; set; } 
         public Mails Mails { get; set; }
     }
 }

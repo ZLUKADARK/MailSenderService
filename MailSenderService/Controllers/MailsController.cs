@@ -7,6 +7,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MailSenderService.Data;
 using MailSenderService.Data.Models;
+using MimeKit;
+using MailKit.Net.Smtp;
+using Microsoft.Extensions.Logging;
 
 namespace MailSenderService.Controllers
 {
@@ -25,63 +28,52 @@ namespace MailSenderService.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Mails>>> GetMails()
         {
-            return await _context.Mails.ToListAsync();
+            return await _context.Mails.Include(m => m.MailsResult).ToListAsync();
         }
 
-        // GET: api/Mails/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Mails>> GetMails(int id)
-        {
-            var mails = await _context.Mails.FindAsync(id);
-
-            if (mails == null)
-            {
-                return NotFound();
-            }
-
-            return mails;
-        }
-
-        // PUT: api/Mails/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutMails(int id, Mails mails)
-        {
-            if (id != mails.Id)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(mails).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!MailsExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
+        
         // POST: api/Mails
         // To protect from overposting attacks, enable the specific properties you want to bind to, for
         // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
         [HttpPost]
         public async Task<ActionResult<Mails>> PostMails(Mails mails)
         {
+
+            MailsResult result = new MailsResult();
+            
             _context.Mails.Add(mails);
             await _context.SaveChangesAsync();
+
+            result.MailsId = new { id = mails.Id }.id;
+            result.CreatedDate = DateTime.Now;
+            _context.MailsResults.Add(result);
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                var emailMessage = new MimeMessage();
+
+                emailMessage.From.Add(new MailboxAddress("Администрация сайта", "@mail.ru"));
+                emailMessage.To.Add(new MailboxAddress("", mails.Recipient));
+                emailMessage.Subject = mails.Subject;
+                emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html)
+                {
+                    Text = mails.Body
+                };
+                using (var client = new SmtpClient())
+                {
+                    await client.ConnectAsync("smtp.mail.ru", 25, false);
+                    await client.AuthenticateAsync("@mail.ru", "");
+                    await client.SendAsync(emailMessage);
+                    await client.DisconnectAsync(true);
+                    result.Result = "OK";
+                }
+            }
+            catch (Exception e)
+            {
+                result.Result = "Failed";
+                result.FailedMessage = e.GetBaseException().Message;
+            }
 
             return CreatedAtAction("GetMails", new { id = mails.Id }, mails);
         }

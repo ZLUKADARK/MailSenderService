@@ -14,8 +14,15 @@ namespace MailSenderService.Data
         {
 
         }
-
         public DbSet<Mails> Mails { get; set; }
         public DbSet<MailsResult> MailsResults { get; set; }
+        
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Mails>()
+            .HasOne(b => b.MailsResult)
+            .WithOne(i => i.Mails)
+            .HasForeignKey<MailsResult>(b => b.MailsId);
+        }
     }
 }

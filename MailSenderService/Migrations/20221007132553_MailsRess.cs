@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace MailSenderService.Migrations
 {
-    public partial class Mails : Migration
+    public partial class MailsRess : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
@@ -26,21 +26,29 @@ namespace MailSenderService.Migrations
                 name: "MailsResults",
                 columns: table => new
                 {
-                    Id = table.Column<int>(nullable: false),
+                    Id = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     CreatedDate = table.Column<DateTime>(nullable: false),
                     Result = table.Column<string>(nullable: true),
-                    FailedMessage = table.Column<string>(nullable: true)
+                    FailedMessage = table.Column<string>(nullable: true),
+                    MailsId = table.Column<int>(nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_MailsResults", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_MailsResults_Mails_Id",
-                        column: x => x.Id,
+                        name: "FK_MailsResults_Mails_MailsId",
+                        column: x => x.MailsId,
                         principalTable: "Mails",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MailsResults_MailsId",
+                table: "MailsResults",
+                column: "MailsId",
+                unique: true);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)

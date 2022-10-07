@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MailSenderService.Migrations
 {
     [DbContext(typeof(MSDBcontext))]
-    [Migration("20221007060348_Mails")]
-    partial class Mails
+    [Migration("20221007132553_MailsRess")]
+    partial class MailsRess
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -45,7 +45,9 @@ namespace MailSenderService.Migrations
             modelBuilder.Entity("MailSenderService.Data.Models.MailsResult", b =>
                 {
                     b.Property<int>("Id")
-                        .HasColumnType("int");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("datetime2");
@@ -53,10 +55,16 @@ namespace MailSenderService.Migrations
                     b.Property<string>("FailedMessage")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("MailsId")
+                        .HasColumnType("int");
+
                     b.Property<string>("Result")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MailsId")
+                        .IsUnique();
 
                     b.ToTable("MailsResults");
                 });
@@ -64,8 +72,8 @@ namespace MailSenderService.Migrations
             modelBuilder.Entity("MailSenderService.Data.Models.MailsResult", b =>
                 {
                     b.HasOne("MailSenderService.Data.Models.Mails", "Mails")
-                        .WithOne("Result")
-                        .HasForeignKey("MailSenderService.Data.Models.MailsResult", "Id")
+                        .WithOne("MailsResult")
+                        .HasForeignKey("MailSenderService.Data.Models.MailsResult", "MailsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
