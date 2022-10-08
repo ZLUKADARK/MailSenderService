@@ -6,6 +6,14 @@ using System.Threading.Tasks;
 
 namespace MailSenderService.Data.Models
 {
+    /// <summary>
+    /// Это сущность Mails в БД
+    /// </summary>
+    /// <param name="Id">Id сущности</param>
+    /// <param name="Subject">Тема сообщения</param>
+    /// <param name="Body">Тело сообщения</param>
+    /// <param name="Recipient">Кому будет отправленно сообщение</param>
+    /// <param name="MailsResult">Навигационное свойство к сущности MailsResult</param>
     public class Mails
     {
         [Key]

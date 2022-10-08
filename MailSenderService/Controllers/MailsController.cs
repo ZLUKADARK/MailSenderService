@@ -10,48 +10,73 @@ using MailSenderService.Data.Models;
 using MimeKit;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 
 namespace MailSenderService.Controllers
 {
+    /// <summary>
+    /// Это основной API контроллер.
+    /// В нем расположено 2 API метода и конструктор.
+    /// </summary>
     [Route("api/[controller]")]
     [ApiController]
     public class MailsController : ControllerBase
     {
         private readonly MSDBcontext _context;
 
-        public MailsController(MSDBcontext context)
+        private readonly IConfiguration _configuration;
+
+        /// <summary>
+        /// В данном конструкторе инициализируются контекст базы данных и конфигураций.
+        /// </summary>
+        /// <param name="context">Контекст БД</param>
+        /// <param name="configuration">Конфигураций</param>
+        public MailsController(MSDBcontext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
-        // GET: api/Mails
+        /// <summary>
+        /// Это API метод возвращающий все сообщения из БД включая поля п.2.2
+        /// </summary>
+        /// <return>Возвращает все из сущности Mails и MailsResult</return>
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Mails>>> GetMails()
         {
             return await _context.Mails.Include(m => m.MailsResult).ToListAsync();
         }
 
-        
-        // POST: api/Mails
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for
-        // more details, see https://go.microsoft.com/fwlink/?linkid=2123754.
+
+        /// <summary>
+        /// Это API метод принимающий в себя поля mails
+        /// </summary>
+        /// <param name="mails"> Это тело запроса</param>
+        /// <return>Возвращает новые созданные сущности Mails и MailsResult</return>
         [HttpPost]
         public async Task<ActionResult<Mails>> PostMails(Mails mails)
         {
-
+            /// <summary>
+            /// Инициализируем объект сущности MailsResult для дальнейшего заполнения и сохранения в базу данных.
+            /// </summary>
+            /// <param name="result"> Объект сущности </param>
             MailsResult result = new MailsResult();
 
-            mails.MailsResult = result; // <--
+            mails.MailsResult = result; 
             result.CreatedDate = DateTime.Now;
 
             _context.Mails.Add(mails);
             _context.MailsResults.Add(result);
             await _context.SaveChangesAsync();
+            
+            /// <summary>
+            /// Тут производится отправка сообщения.
+            /// </summary>
             try
             {
                 var emailMessage = new MimeMessage();
 
-                emailMessage.From.Add(new MailboxAddress("Администрация сайта", "@mail.ru"));
+                emailMessage.From.Add(new MailboxAddress("Администрация сайта", _configuration["SMTP:Mail"]));
                 emailMessage.To.Add(new MailboxAddress("", mails.Recipient));
                 emailMessage.Subject = mails.Subject;
                 emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html)
@@ -60,8 +85,8 @@ namespace MailSenderService.Controllers
                 };
                 using (var client = new SmtpClient())
                 {
-                    await client.ConnectAsync("smtp.mail.ru", 25, false);
-                    await client.AuthenticateAsync("@mail.ru", "");
+                    await client.ConnectAsync(_configuration["SMTP:Domain"], Convert.ToInt32(_configuration["SMTP:PORT"]), Convert.ToBoolean(_configuration["SMTP:SSL"]));
+                    await client.AuthenticateAsync(_configuration["SMTP:Mail"], _configuration["SMTP:Password"]);
                     await client.SendAsync(emailMessage);
                     await client.DisconnectAsync(true);
                     result.Result = "OK";
@@ -74,27 +99,6 @@ namespace MailSenderService.Controllers
             }
 
             return CreatedAtAction("GetMails", new { id = mails.Id }, mails);
-        }
-
-        // DELETE: api/Mails/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<Mails>> DeleteMails(int id)
-        {
-            var mails = await _context.Mails.FindAsync(id);
-            if (mails == null)
-            {
-                return NotFound();
-            }
-
-            _context.Mails.Remove(mails);
-            await _context.SaveChangesAsync();
-
-            return mails;
-        }
-
-        private bool MailsExists(int id)
-        {
-            return _context.Mails.Any(e => e.Id == id);
         }
     }
 }

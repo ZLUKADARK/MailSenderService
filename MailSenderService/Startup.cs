@@ -29,8 +29,10 @@ namespace MailSenderService
         {
             services.AddControllersWithViews();
             services.AddControllers();
+            
             services.AddControllers().AddNewtonsoftJson(x =>
              x.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
+
             services.AddDbContext<MSDBcontext>(options =>
                     options.UseSqlServer(Configuration.GetConnectionString("MSDBcontext")));
 
@@ -43,7 +45,7 @@ namespace MailSenderService
             {
                 app.UseDeveloperExceptionPage();
             }
-
+            
             app.UseHttpsRedirection();
 
             app.UseRouting();
