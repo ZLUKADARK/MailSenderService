@@ -2,15 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MailSenderService.Data;
 using MailSenderService.Data.Models;
 using MimeKit;
 using MailKit.Net.Smtp;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using MailSenderService.Data.Dto;
 
 namespace MailSenderService.Controllers
 {
@@ -42,9 +41,20 @@ namespace MailSenderService.Controllers
         /// </summary>
         /// <return>Возвращает все из сущности Mails и MailsResult</return>
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Mails>>> GetMails()
+        public IQueryable<MailsDto> GetMails()
         {
-            return await _context.Mails.Include(m => m.MailsResult).ToListAsync();
+            var mails = from m in _context.Mails.Include(m => m.MailsResult) 
+                        select new MailsDto()
+                        {
+                            Id = m.Id,
+                            Recipient = m.Recipient,
+                            Subject = m.Subject,
+                            Body = m.Body,
+                            CreatedDate = m.MailsResult.CreatedDate,
+                            FailedMessage = m.MailsResult.FailedMessage,
+                            Result = m.MailsResult.Result,
+                        };
+            return mails;
         }
 
 
@@ -56,22 +66,11 @@ namespace MailSenderService.Controllers
         [HttpPost]
         public async Task<ActionResult<Mails>> PostMails(Mails mails)
         {
-            /// <summary>
-            /// Инициализируем объект сущности MailsResult для дальнейшего заполнения и сохранения в базу данных.
-            /// </summary>
-            /// <param name="result"> Объект сущности </param>
             MailsResult result = new MailsResult();
 
-            mails.MailsResult = result; 
-            result.CreatedDate = DateTime.Now;
-
-            _context.Mails.Add(mails);
-            _context.MailsResults.Add(result);
-            await _context.SaveChangesAsync();
+           
             
-            /// <summary>
-            /// Тут производится отправка сообщения.
-            /// </summary>
+          
             try
             {
                 var emailMessage = new MimeMessage();
@@ -98,7 +97,27 @@ namespace MailSenderService.Controllers
                 result.FailedMessage = e.GetBaseException().Message;
             }
 
-            return CreatedAtAction("GetMails", new { id = mails.Id }, mails);
+            mails.MailsResult = result;
+            result.CreatedDate = DateTime.Now;
+
+            _context.Mails.Add(mails);
+            _context.MailsResults.Add(result);
+
+            await _context.SaveChangesAsync();
+
+            var resultmail = new MailsDto()
+            {
+                Id = mails.Id,
+                Recipient = mails.Recipient,
+                Subject = mails.Subject,
+                Body = mails.Body,
+                CreatedDate = mails.MailsResult.CreatedDate,
+                FailedMessage = mails.MailsResult.FailedMessage,
+                Result = mails.MailsResult.Result,
+            };
+
+           
+            return CreatedAtAction("GetMails", new { id = mails.Id }, resultmail);
         }
     }
 }
