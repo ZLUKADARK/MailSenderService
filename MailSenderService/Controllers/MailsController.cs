@@ -10,6 +10,7 @@ using MimeKit;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Configuration;
 using MailSenderService.Data.Dto;
+using MailSenderService.Services;
 
 namespace MailSenderService.Controllers
 {
@@ -43,7 +44,7 @@ namespace MailSenderService.Controllers
         [HttpGet]
         public IQueryable<MailsDto> GetMails()
         {
-            var mails = from m in _context.Mails.Include(m => m.MailsResult) 
+            var mails = from m in _context.Mails.Include(m => m.MailsResult).AsNoTracking() 
                         select new MailsDto()
                         {
                             Id = m.Id,
@@ -64,60 +65,13 @@ namespace MailSenderService.Controllers
         /// <param name="mails"> Это тело запроса</param>
         /// <return>Возвращает новые созданные сущности Mails и MailsResult</return>
         [HttpPost]
-        public async Task<ActionResult<Mails>> PostMails(Mails mails)
+        public async Task<ActionResult<MailsDto>> PostMails(Mails mails)
         {
-            MailsResult result = new MailsResult();
 
-           
-            
-          
-            try
-            {
-                var emailMessage = new MimeMessage();
+            MailsSender mailSender = new MailsSender();
+            var result = await mailSender.MassageSender(mails, _context, _configuration);
 
-                emailMessage.From.Add(new MailboxAddress("Администрация сайта", _configuration["SMTP:Mail"]));
-                emailMessage.To.Add(new MailboxAddress("", mails.Recipient));
-                emailMessage.Subject = mails.Subject;
-                emailMessage.Body = new TextPart(MimeKit.Text.TextFormat.Html)
-                {
-                    Text = mails.Body
-                };
-                using (var client = new SmtpClient())
-                {
-                    await client.ConnectAsync(_configuration["SMTP:Domain"], Convert.ToInt32(_configuration["SMTP:PORT"]), Convert.ToBoolean(_configuration["SMTP:SSL"]));
-                    await client.AuthenticateAsync(_configuration["SMTP:Mail"], _configuration["SMTP:Password"]);
-                    await client.SendAsync(emailMessage);
-                    await client.DisconnectAsync(true);
-                    result.Result = "OK";
-                }
-            }
-            catch (Exception e)
-            {
-                result.Result = "Failed";
-                result.FailedMessage = e.GetBaseException().Message;
-            }
-
-            mails.MailsResult = result;
-            result.CreatedDate = DateTime.Now;
-
-            _context.Mails.Add(mails);
-            _context.MailsResults.Add(result);
-
-            await _context.SaveChangesAsync();
-
-            var resultmail = new MailsDto()
-            {
-                Id = mails.Id,
-                Recipient = mails.Recipient,
-                Subject = mails.Subject,
-                Body = mails.Body,
-                CreatedDate = mails.MailsResult.CreatedDate,
-                FailedMessage = mails.MailsResult.FailedMessage,
-                Result = mails.MailsResult.Result,
-            };
-
-           
-            return CreatedAtAction("GetMails", new { id = mails.Id }, resultmail);
+            return CreatedAtAction("GetMails", new { id = mails.Id }, result);
         }
     }
 }
