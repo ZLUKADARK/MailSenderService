@@ -49,21 +49,28 @@ namespace MailSenderService.Services
                 resultdb.Result = "Failed";
                 resultdb.FailedMessage = e.GetBaseException().Message;
             }
-
-            mailsdb.Body = mails.Body;
-            mailsdb.Recipient = mails.Recipient;
+            
+            mailsdb.Body = mails.Body;  
             mailsdb.Subject = mails.Subject;
-
-            mailsdb.MailsResult = resultdb;
             resultdb.CreatedDate = DateTime.Now;
+            mailsdb.MailsResult = resultdb;
 
-            _context.Mails.Add(mailsdb);
-            _context.MailsResults.Add(resultdb);
 
-            await _context.SaveChangesAsync();
+            foreach (var mail in mails.Recipient.Split(","))
+            {
+                mailsdb.Id = 0;
+                resultdb.Id = 0;
+                mailsdb.Recipient = mail.Trim();
+
+                _context.Mails.Add(mailsdb);
+                _context.MailsResults.Add(resultdb);
+                await _context.SaveChangesAsync();
+            }
+            
+
             var resultmail = new MailsDto()
             {
-                Id = mailsdb.Id,
+                Id = resultdb.Id,
                 Recipient = mails.Recipient,
                 Subject = mails.Subject,
                 Body = mails.Body,
