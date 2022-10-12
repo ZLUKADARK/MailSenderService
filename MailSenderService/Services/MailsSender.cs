@@ -18,9 +18,10 @@ namespace MailSenderService.Services
         /// <param name="context">Контекст БД</param>
         /// <param name="configuration">Конфигураций</param>
 
-        public async Task<MailsDto> MassageSender(Mails mails, MSDBcontext _context, IConfiguration _configuration )
+        public async Task<MailsDto> MassageSender(MailsBodyDto mails, MSDBcontext _context, IConfiguration _configuration )
         {
-            MailsResult result = new MailsResult();
+            Mails mailsdb = new Mails();
+            MailsResult resultdb = new MailsResult();
             try
             {
                 MimeMessage emailMessage = new MimeMessage();
@@ -40,31 +41,35 @@ namespace MailSenderService.Services
                     await client.AuthenticateAsync(_configuration["SMTP:Mail"], _configuration["SMTP:Password"]);
                     await client.SendAsync(emailMessage);
                     await client.DisconnectAsync(true);
-                    result.Result = "OK";
+                    resultdb.Result = "OK";
                 }
             }
             catch (Exception e)
             {
-                result.Result = "Failed";
-                result.FailedMessage = e.GetBaseException().Message;
+                resultdb.Result = "Failed";
+                resultdb.FailedMessage = e.GetBaseException().Message;
             }
 
-            mails.MailsResult = result;
-            result.CreatedDate = DateTime.Now;
+            mailsdb.Body = mails.Body;
+            mailsdb.Recipient = mails.Recipient;
+            mailsdb.Subject = mails.Subject;
 
-            _context.Mails.Add(mails);
-            _context.MailsResults.Add(result);
+            mailsdb.MailsResult = resultdb;
+            resultdb.CreatedDate = DateTime.Now;
+
+            _context.Mails.Add(mailsdb);
+            _context.MailsResults.Add(resultdb);
 
             await _context.SaveChangesAsync();
             var resultmail = new MailsDto()
             {
-                Id = mails.Id,
+                Id = mailsdb.Id,
                 Recipient = mails.Recipient,
                 Subject = mails.Subject,
                 Body = mails.Body,
-                CreatedDate = mails.MailsResult.CreatedDate,
-                FailedMessage = mails.MailsResult.FailedMessage,
-                Result = mails.MailsResult.Result,
+                CreatedDate = mailsdb.MailsResult.CreatedDate,
+                FailedMessage = mailsdb.MailsResult.FailedMessage,
+                Result = mailsdb.MailsResult.Result,
             };
 
 

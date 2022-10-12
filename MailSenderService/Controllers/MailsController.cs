@@ -42,9 +42,9 @@ namespace MailSenderService.Controllers
         /// </summary>
         /// <return>Возвращает все из сущности Mails и MailsResult</return>
         [HttpGet]
-        public IQueryable<MailsDto> GetMails()
+        public async Task<IEnumerable<MailsDto>> GetMails()
         {
-            var mails = from m in _context.Mails.Include(m => m.MailsResult).AsNoTracking() 
+            var mails = from m in _context.Mails.Include(m => m.MailsResult).AsNoTracking()
                         select new MailsDto()
                         {
                             Id = m.Id,
@@ -55,7 +55,7 @@ namespace MailSenderService.Controllers
                             FailedMessage = m.MailsResult.FailedMessage,
                             Result = m.MailsResult.Result,
                         };
-            return mails;
+            return await mails.ToListAsync();
         }
 
 
@@ -65,13 +65,13 @@ namespace MailSenderService.Controllers
         /// <param name="mails"> Это тело запроса</param>
         /// <return>Возвращает новые созданные сущности Mails и MailsResult</return>
         [HttpPost]
-        public async Task<ActionResult<MailsDto>> PostMails(Mails mails)
+        public async Task<ActionResult<MailsDto>> PostMails(MailsBodyDto mails)
         {
 
             MailsSender mailSender = new MailsSender();
             var result = await mailSender.MassageSender(mails, _context, _configuration);
 
-            return CreatedAtAction("GetMails", new { id = mails.Id }, result);
+            return CreatedAtAction("GetMails", new { id = result.Id }, result);
         }
     }
 }
