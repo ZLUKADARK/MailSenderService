@@ -12,16 +12,11 @@ namespace MailSenderService.Services
 {
     public class MailsSender
     {
-        /// <summary>
-        /// В данном конструкторе инициализируются контекст базы данных и конфигураций.
-        /// </summary>
-        /// <param name="context">Контекст БД</param>
-        /// <param name="configuration">Конфигураций</param>
 
         public async Task<MailsDto> MassageSender(MailsBodyDto mails, MSDBcontext _context, IConfiguration _configuration )
         {
-            Mails mailsdb = new Mails();
-            MailsResult resultdb = new MailsResult();
+            MailsDto mailsdto = new MailsDto();
+            
             try
             {
                 MimeMessage emailMessage = new MimeMessage();
@@ -41,45 +36,60 @@ namespace MailSenderService.Services
                     await client.AuthenticateAsync(_configuration["SMTP:Mail"], _configuration["SMTP:Password"]);
                     await client.SendAsync(emailMessage);
                     await client.DisconnectAsync(true);
-                    resultdb.Result = "OK";
+                    mailsdto.Result = "OK";
                 }
             }
             catch (Exception e)
             {
-                resultdb.Result = "Failed";
-                resultdb.FailedMessage = e.GetBaseException().Message;
+                mailsdto.Result = "Failed";
+                mailsdto.FailedMessage = e.GetBaseException().Message;
             }
             
-            mailsdb.Body = mails.Body;  
-            mailsdb.Subject = mails.Subject;
-            resultdb.CreatedDate = DateTime.Now;
+            mailsdto.Recipient = mails.Recipient;
+            mailsdto.Body = mails.Body;
+            mailsdto.Subject = mails.Subject;
+            mailsdto.CreatedDate = DateTime.Now;
+
+
+            return await SaveResult(mailsdto, _context); 
+        }
+
+        private async Task<MailsDto> SaveResult(MailsDto mailsDto, MSDBcontext _context)
+        {
+            MailsResult resultdb = new MailsResult();
+            Mails mailsdb = new Mails();
+
+            mailsdb.Subject = mailsDto.Subject;
+            mailsdb.Body = mailsDto.Body;
+            resultdb.CreatedDate = mailsDto.CreatedDate;
+            resultdb.FailedMessage = mailsDto.FailedMessage;
+            resultdb.Result = mailsDto.Result;
             mailsdb.MailsResult = resultdb;
 
-
-            foreach (var mail in mails.Recipient.Split(","))
+            foreach (var mail in mailsDto.Recipient.Split(","))
             {
                 mailsdb.Id = 0;
                 resultdb.Id = 0;
+
                 mailsdb.Recipient = mail.Trim();
 
                 _context.Mails.Add(mailsdb);
                 _context.MailsResults.Add(resultdb);
                 await _context.SaveChangesAsync();
             }
-            
+            mailsdb.MailsResult = resultdb;
 
             var resultmail = new MailsDto()
             {
                 Id = resultdb.Id,
-                Recipient = mails.Recipient,
-                Subject = mails.Subject,
-                Body = mails.Body,
-                CreatedDate = mailsdb.MailsResult.CreatedDate,
-                FailedMessage = mailsdb.MailsResult.FailedMessage,
-                Result = mailsdb.MailsResult.Result,
+                Recipient = mailsDto.Recipient,
+                Subject = mailsDto.Subject,
+                Body = mailsDto.Body,
+                CreatedDate = mailsDto.CreatedDate,
+                FailedMessage = mailsDto.FailedMessage,
+                Result = mailsDto.Result,
             };
-
-
+            
             return resultmail;
         }
     }
