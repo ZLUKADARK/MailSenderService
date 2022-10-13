@@ -77,7 +77,6 @@ namespace MailSenderService.Services
                 _context.MailsResults.Add(resultdb);
                 await _context.SaveChangesAsync();
             }
-            mailsdb.MailsResult = resultdb;
 
             var resultmail = new MailsDto()
             {
